@@ -8,8 +8,10 @@ declare(strict_types=1);
 
 namespace App\Entity;
 
+use ApiPlatform\Core\Annotation\ApiFilter;
 use ApiPlatform\Core\Annotation\ApiProperty;
 use ApiPlatform\Core\Annotation\ApiResource;
+use ApiPlatform\Core\Annotation\ApiSubresource;
 use App\Repository\UserRepository;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
@@ -17,13 +19,16 @@ use Doctrine\ORM\Mapping as ORM;
 use Gedmo\Timestampable\Traits\TimestampableEntity;
 use Ramsey\Uuid\Uuid;
 use Ramsey\Uuid\UuidInterface;
+use Symfony\Bridge\Doctrine\Validator\Constraints\UniqueEntity;
 use Symfony\Component\Security\Core\User\UserInterface;
 use Symfony\Component\Serializer\Annotation\Groups;
 use Symfony\Component\Serializer\Annotation\SerializedName;
 use Symfony\Component\Validator\Constraints as Assert;
+use ApiPlatform\Core\Bridge\Doctrine\Orm\Filter\SearchFilter;
 
 /**
  * @ApiResource(
+ *     forceEager=false,
  *     collectionOperations={
  *       "get","post"
  *     },
@@ -31,11 +36,18 @@ use Symfony\Component\Validator\Constraints as Assert;
  *       "get",
  *       "put" = {"security"="is_granted('ROLE_ADMIN') or object == user"}
  *     },
- *     normalizationContext={"groups"={"read"}},
- *     denormalizationContext={"groups"={"write"}}
+ *     normalizationContext={"groups"={"user:read"},"enable_max_depth"=true},
+ *     denormalizationContext={"groups"={"user:write"},"enable_max_depth"=true}
  * )
+ * @ApiFilter(SearchFilter::class, properties={"username":"exact"})
  *
  * @ORM\Entity(repositoryClass=UserRepository::class)
+ *
+ * @UniqueEntity(
+ *     fields={"username"},
+ *     errorPath="username",
+ *     message="Username already taken !!!."
+ * )
  */
 class User implements UserInterface
 {
@@ -59,7 +71,7 @@ class User implements UserInterface
      *
      * @ApiProperty(identifier=true)
      *
-     * @Groups("read")
+     * @Groups("user:read")
      */
     private ?UuidInterface $uuid;
 
@@ -68,7 +80,7 @@ class User implements UserInterface
      *
      * @Assert\NotBlank()
      *
-     * @Groups({"read", "write"})
+     * @Groups({"user:read", "user:write"})
      */
     private string $username;
 
@@ -77,7 +89,7 @@ class User implements UserInterface
      *
      * @Assert\Email()
      *
-     * @Groups({"read", "write"})
+     * @Groups({"user:read", "user:write"})
      */
     private string $email;
 
@@ -89,21 +101,21 @@ class User implements UserInterface
     /**
      * @ORM\Column(type="string", length=100, nullable=true)
      *
-     * @Groups({"read", "write"})
+     * @Groups({"user:read", "user:write"})
      */
     private ?string $pseudo;
 
     /**
      * @ORM\Column(type="json")
      *
-     * @Groups({"read", "write"})
+     * @Groups({"user:read"})
      */
     private array $roles;
 
     /**
      * @ORM\OneToMany(targetEntity=Blog::class, mappedBy="user")
      *
-     * @Groups("read")
+     * @ApiSubresource()
      */
     private ?Collection $blogs;
 
@@ -119,7 +131,7 @@ class User implements UserInterface
      *
      * @Assert\NotBlank()
      *
-     * @Groups("write")
+     * @Groups("user:write")
      */
     private ?string $plainPassword;
 
